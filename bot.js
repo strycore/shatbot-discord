@@ -170,6 +170,7 @@ const newGuy = function () {
 		"doesn't want to log in any server that uses Systemd",
 	]
 	return "The new	guy " + randomChoice(newGuyIsDoing);
+}
 
 const dmPunish = function (args) {
 	const didrex = /(<@[0-9]*>)/;
