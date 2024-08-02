@@ -169,7 +169,7 @@ const newGuy = function () {
 		"wants to use his Steam Deck as his main work computer",
 		"doesn't want to log in any server that uses Systemd",
 	]
-	return "The new	guy " + randomChoice(newGuyIsDoing);
+	return "The new guy " + randomChoice(newGuyIsDoing);
 }
 
 const dmPunish = function (args) {
