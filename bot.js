@@ -188,12 +188,14 @@ const jalaud = function () {
 		"KDE Plasma",
 		"Gamescope",
 		"Lutris",
+		"Audacity",
+		"Wayland",
 	]);
 	const action = randomChoice([
+		"made a systemd service for",
 		"upgraded",
 		"deleted",
 		"gave root access to",
-		"made a systemd service for",
 		"checked the logs for",
 		"transferred my old backups for",
 	]);
@@ -222,6 +224,24 @@ const jalaud = function () {
 		"infected with a trojan"
 	])
 	return "I " + action + " " + software + " and now my " + hardware + " is " + effect + "!";
+}
+
+const venn = function () {
+	const action = randomChoice([
+		"play fighting games",
+		"use hard disk drives",
+		"use micro SD cards",
+		"use Gnome or KDE",
+		"play point and click games",
+	])
+	const reason = randomChoice([
+		"I'm not competitive enough to go to the EVO finals.",
+		"I've had a Seagate crash in 2005",
+		"they're too small and can get lost",
+		"they get in my way",
+		"there was a time and a place for that and it was called the nineties"
+	])
+	return "I don't " + action + " because " + reason + "."
 }
 
 const dmPunish = function (args) {
@@ -341,6 +361,9 @@ bot.on("message", async (msg) => {
 				break;
 			case "jalaud":
 				msg.channel.send(jalaud());
+				break;
+			case "venn":
+				msg.channel.send(venn());
 				break;
 			case "punish":
 				msg.channel.send(dmPunish(args));
