@@ -172,6 +172,58 @@ const newGuy = function () {
 	return "The new guy " + randomChoice(newGuyIsDoing);
 }
 
+const jalaud = function () {
+	const software = randomChoice([
+		"Reaper",
+		"qpwgraph",
+		"HomeAssistant",
+		"Emacs",
+		"Jira",
+		"Gitlab",
+		"podman",
+		"Jellyfin",
+		"Firefox",
+		"pipewire",
+		"ufw",
+		"KDE Plasma",
+		"Gamescope",
+		"Lutris",
+	]);
+	const action = randomChoice([
+		"upgraded",
+		"deleted",
+		"gave root access to",
+		"made a systemd service for",
+		"checked the logs for",
+		"transferred my old backups for",
+	]);
+	const hardware = randomChoice([
+		"Ryzen CPU",
+		"Radeon GPU",
+		"12cm fan",
+		"AMD RX 5700 XT",
+		"1TB SSD",
+		"USB sound interface",
+		"Bluetooth headset",
+		"mechanical keyboard",
+		"Celeron 333",
+		"Steam Deck",
+		"MSI Claw",
+	]);
+	const effect = randomChoice([
+		"smelling like burned hair",
+		"frozen",
+		"out of wack",
+		"causing low frequency resonances",
+		"spamming my systemd logs",
+		"causing my phone to overheat",
+		"making my computer shut down but only after 4PM",
+		"making me nauseous",
+		"infected with a trojan"
+	])
+	return "I " + action + " " + software + " and now my " + hardware + " is " + effect + "!";
+}
+
 const dmPunish = function (args) {
 	const didrex = /(<@[0-9]*>)/;
 	const argstr = args.join(' ').trim();
@@ -286,6 +338,9 @@ bot.on("message", async (msg) => {
 				break;
 			case "oof":
 				msg.channel.send(pedro.oof());
+				break;
+			case "jalaud":
+				msg.channel.send(jalaud());
 				break;
 			case "punish":
 				msg.channel.send(dmPunish(args));
