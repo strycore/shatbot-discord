@@ -155,19 +155,20 @@ const justinsBoss = function () {
 
 const newGuy = function () {
 	const newGuyIsDoing = [
-		"has a Latitude laptop, what humility!",
-		"pushed a bad update to prod, 8 million Windows machines have crashed",
-		"is streaming Baldur's Gate 3 on Twitch, he is a GOD among us!",
-		"has made a leak in the water cooling loop",
-		"doesn't know how to do a nmap scan",
-		"doesn't have a computer, he is using an iPad",
-		"deleted the production database",
-		"is having fun with Justin's boss while Justin is dealing with nightmare updates",
-		"uploaded adult videos to the company's Sharepoint",
-		"wants dual 4090s TOMORROW MORNING",
-		"refuses to use anything other than Haiku OS",
-		"wants to use his Steam Deck as his main work computer",
-		"doesn't want to log in any server that uses Systemd",
+		"has a Latitude laptop, he is proud to be inferior!",
+		"is shit at coding and pushed a bad update to prod, 8 million Windows machines have crashed",
+		"used to stream Baldur's Gate 3 on Twitch, but now he serves the establishment",
+		"has made a leak in the water cooling loop. What a bozo.",
+		"doesn't know how to do a nmap scan. He has zero XP in networking.",
+		"doesn't have a computer, he is using an iPad. He is totally skill-less",
+		"deleted the production database. He's worse than useless.",
+		"is being scolded by Justin's boss for fucking up big time once again",
+		"uploaded adult videos to the company's Sharepoint. Probably what he did best so far",
+		"wants dual 4090s TOMORROW MORNING. But he doesn't deserve them. He gets FUCK ALL.",
+		"refuses to use anything other than Haiku OS. He will learn to do as he's told.",
+		"wants to use his Steam Deck as his main work computer. He doesn't know what it means to get shit done.",
+		"doesn't want to log in any server that uses Systemd. He read something about it on the Manjaro forums.",
+		"helped me figure it out with chatgpt. The outcome was wrong and 2 people died because of that.",
 	]
 	return "The new guy " + randomChoice(newGuyIsDoing);
 }
