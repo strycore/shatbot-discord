@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import Database from "better-sqlite3";
+import initSqlJs from "sql.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const conf = JSON.parse(readFileSync(join(__dirname, "conf.json"), "utf8"));
@@ -9,26 +9,38 @@ const conf = JSON.parse(readFileSync(join(__dirname, "conf.json"), "utf8"));
 const SCHEMA_VERSION = 2;
 
 let db;
+let dbPath;
 
-export function connect() {
-	const dburi = join(conf.db.path, conf.db.name);
-	db = new Database(dburi);
-	db.pragma("journal_mode = WAL");
+export async function connect() {
+	dbPath = join(conf.db.path, conf.db.name);
+	const SQL = await initSqlJs();
+	if (existsSync(dbPath)) {
+		const buf = readFileSync(dbPath);
+		db = new SQL.Database(buf);
+	} else {
+		db = new SQL.Database();
+	}
+}
+
+function save() {
+	const data = db.export();
+	writeFileSync(dbPath, Buffer.from(data));
 }
 
 function getSchemaVer() {
-	const row = db.pragma("user_version", { simple: true });
-	return row;
+	const res = db.exec("PRAGMA user_version");
+	if (!res.length) return 0;
+	return res[0].values[0][0];
 }
 
 function setSchemaVer(ver) {
-	db.pragma(`user_version = ${ver}`);
+	db.run(`PRAGMA user_version = ${ver}`);
 }
 
 function upgradeSchema(from) {
 	switch (from + 1) {
 		case 1:
-			db.exec(`
+			db.run(`
 CREATE TABLE messages(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	user TEXT NOT NULL, userID TEXT NOT NULL,
@@ -40,7 +52,7 @@ CREATE TABLE messages(
 			setSchemaVer(1);
 			break;
 		case 2:
-			db.exec(`
+			db.run(`
 CREATE TABLE suggest_enabled(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	enabled INTEGER NOT NULL, message_id INTEGER NOT NULL,
@@ -59,41 +71,35 @@ export function updateSchema() {
 		upgradeSchema(ver);
 		ver++;
 	}
+	save();
 }
 
 export function logMessage(msg) {
-	const stmt = db.prepare(
-		"INSERT INTO messages (user, userID, channelID, message, evt) VALUES (?, ?, ?, ?, ?)"
-	);
-	const info = stmt.run(
-		msg.author.username,
-		msg.author.id,
-		msg.channel.id,
-		msg.content,
-		"message"
+	db.run(
+		"INSERT INTO messages (user, userID, channelID, message, evt) VALUES (?, ?, ?, ?, ?)",
+		[msg.author.username, msg.author.id, msg.channel.id, msg.content, "message"]
 	);
 	console.log("log - (" + msg.author.username + ") " + msg.content);
-	return info.lastInsertRowid;
+	save();
+	const res = db.exec("SELECT last_insert_rowid()");
+	return res[0].values[0][0];
 }
 
 export function getSuggestEnabled(channelID) {
-	const stmt = db.prepare(`
-SELECT enabled FROM suggest_enabled AS se
-LEFT JOIN messages AS m ON m.id = se.message_id
-WHERE m.channelID = ?
-ORDER BY m.ts DESC
-LIMIT 1
-	`);
-	const row = stmt.get(channelID);
-	if (!row) return false;
-	return row.enabled === 1;
+	const res = db.exec(
+		"SELECT enabled FROM suggest_enabled AS se LEFT JOIN messages AS m ON m.id = se.message_id WHERE m.channelID = ? ORDER BY m.ts DESC LIMIT 1",
+		[channelID]
+	);
+	if (!res.length || !res[0].values.length) return false;
+	return res[0].values[0][0] === 1;
 }
 
 export function setSuggestEnabled(msg, bool) {
 	const msgId = logMessage(msg);
-	const boolstr = bool ? 1 : 0;
-	const stmt = db.prepare(
-		"INSERT INTO suggest_enabled (enabled, message_id) VALUES (?, ?)"
+	const boolval = bool ? 1 : 0;
+	db.run(
+		"INSERT INTO suggest_enabled (enabled, message_id) VALUES (?, ?)",
+		[boolval, msgId]
 	);
-	stmt.run(boolstr, msgId);
+	save();
 }

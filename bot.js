@@ -19,7 +19,7 @@ const insults = JSON.parse(readFileSync(join(__dirname, "insults.json"), "utf8")
 const memberBerries = JSON.parse(readFileSync(join(__dirname, "memberberries.json"), "utf8"));
 const definitions = JSON.parse(readFileSync(join(__dirname, "definitions.json"), "utf8"));
 
-db.connect();
+await db.connect();
 db.updateSchema();
 
 // Configure logger
