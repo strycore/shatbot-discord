@@ -1,36 +1,44 @@
-"use strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { Client, EmbedBuilder, GatewayIntentBits } from "discord.js";
+import winston from "winston";
 
-const { Client, MessageEmbed } = require('discord.js');
-const cheerio = require("cheerio");
-const request = require("request");
-const logger = require("winston");
+import * as db from "./db.js";
+import { searchLutris } from "./lutris.js";
+import { getRandomGif } from "./giphy.js";
+import { makeMeme } from "./meme.js";
+import { flipText } from "./aussie.js";
+import { steph } from "./jfss.js";
+import { oof } from "./oof.js";
+import { scott } from "./scott.js";
 
-const conf = require("./conf.json");
-const db = require("./db.js");
-const lutris = require("./lutris.js");
-const youtube = require("./youtube.js");
-const giphy = require("./giphy.js");
-const meme = require("./meme.js");
-const aussie = require("./aussie.js");
-const jfss = require("./jfss.js");
-const pedro = require("./oof.js");
-const great = require("./scott.js");
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const conf = JSON.parse(readFileSync(join(__dirname, "conf.json"), "utf8"));
+const insults = JSON.parse(readFileSync(join(__dirname, "insults.json"), "utf8"));
+const memberBerries = JSON.parse(readFileSync(join(__dirname, "memberberries.json"), "utf8"));
+const definitions = JSON.parse(readFileSync(join(__dirname, "definitions.json"), "utf8"));
 
 db.connect();
 db.updateSchema();
 
-// Configure logger settings
-logger.remove(logger.transports.Console);
-logger.add(logger.transports.Console, {
-	colorize: true,
+// Configure logger
+const logger = winston.createLogger({
+	level: "debug",
+	format: winston.format.combine(
+		winston.format.colorize(),
+		winston.format.simple()
+	),
+	transports: [
+		new winston.transports.Console()
+	]
 });
-logger.level = "debug";
 
 
 function shuffle(array) {
 	for (let i = array.length - 1; i > 0; i--) {
-	  let j = Math.floor(Math.random() * (i + 1));
-	  [array[i], array[j]] = [array[j], array[i]];
+		let j = Math.floor(Math.random() * (i + 1));
+		[array[i], array[j]] = [array[j], array[i]];
 	}
 }
 
@@ -65,7 +73,7 @@ const tickleMeFrojoe = function(msg, args) {
 				")";
 		}
 	}
-	return "Usage: !frojoe XdY\nWhere: X and Y are members of ℕ*, X < 100, and Y < 10000";
+	return "Usage: !frojoe XdY\nWhere: X and Y are members of \u2115*, X < 100, and Y < 10000";
 }
 
 const linuxgnuruGoingToBed = function () {
@@ -247,10 +255,8 @@ const venn = function () {
 
 const dmPunish = function (args) {
 	const didrex = /(<@[0-9]*>)/;
-	const argstr = args.join(' ').trim();
-	//logger.info(`argstr: ${argstr}`);
+	const argstr = args.join(" ").trim();
 	const m = argstr.match(didrex);
-	//logger.info(`m: ${m}`);
 	let needvictim = [
 		"You must tell me whom I should tickle, master.",
 		"My firey wrath need but a target, your greatness.",
@@ -280,48 +286,97 @@ const dmPunish = function (args) {
 
 	const vname = m[0];
 	let p = randomChoice(punishments);
-	let punishment = p.replace('<@>', vname);
+	let punishment = p.replace("<@>", vname);
 
 	return punishment;
 }
 
+function makeInsult(name) {
+	var ins = insults.length;
+	logger.info("ins: " + ins);
+	var ind = Math.floor(Math.random() * ins);
+	logger.info("ind: " + ind);
+	var insult = insults[ind];
+	var i = insult.replace(/@s/g, name);
+	return i;
+}
+
+function member() {
+	return "\u2026member " + randomChoice(memberBerries) + "?!!? :-D";
+}
+
+function watIs(args) {
+	const wat = args.join(" ")
+	if (!wat) {
+		return "Yo, what's up?!";
+	}
+	const definition = definitions[wat.trim().toLowerCase()];
+	if (definition) {
+		return definition;
+	} else {
+		return "I have no clue what a " + args + " is.";
+	}
+}
+
+function foxxxify(args) {
+	const dogg = args[0]
+	if (!dogg) return ":regional_indicator_m: :fox: :dog2: :flag_au:";
+	const doggo = dogg.trim().toLowerCase();
+	if (doggo === "out")
+		return "https://cdn.discordapp.com/attachments/270406768750886912/443264760436490271/fuck-this-shit.png";
+	if (doggo === "laterz")
+		return "https://cdn.discordapp.com/attachments/270406768750886912/474401118915657746/Screenshot_from_2018-05-06_14-16-03.png";
+	return "https://cdn.discordapp.com/attachments/270406768750886912/474401450257154048/Screenshot_from_2018-05-12_13-38-18.png";
+}
+
+function mark() {
+	return "https://media.discordapp.net/attachments/270406768750886912/943523121074429952/Screenshot_from_2022-02-15_14-41-38.png"
+}
+
+function sendResponse(channel, response) {
+	if (!response) return;
+	if (response instanceof EmbedBuilder) {
+		channel.send({ embeds: [response] });
+	} else if (typeof response === "object" && response.embed) {
+		const embed = new EmbedBuilder(response.embed);
+		channel.send({ embeds: [embed] });
+	} else {
+		channel.send(response);
+	}
+}
+
 // Initialize Discord Bot
-var bot = new Client()
-bot.login(conf["discord"]["auth_token"])
+const bot = new Client({
+	intents: [
+		GatewayIntentBits.Guilds,
+		GatewayIntentBits.GuildMessages,
+		GatewayIntentBits.MessageContent,
+	]
+});
+bot.login(conf.discord.auth_token);
 
 bot.on("ready", () => {
-	//this.setPresence({ game: { name: "with itself" } });
 	logger.info("Connected");
 	logger.info("Logged in as: ");
 	logger.info(bot.user.id + " - (" + bot.user.username + ")");
 });
 
-bot.on("any", event => {
-	if (event.op == 0) return;
-	// console.log(Date() + " - event: " + JSON.stringify(event));
-});
-
-bot.on("message", async (msg) => {
-	const channelID = msg.channel.id
-	const userID = msg
-
+bot.on("messageCreate", async (msg) => {
 	if (msg.content.substring(0, 1) == "!") {
 		var args = msg.content.substring(1).split(" ");
 		var cmd = args[0];
-		// logger.info(`cmd: ${cmd}`);
 		args = args.splice(1);
-		// logger.info(`args: ${args}`);
 		const oofrex = /^[oO]+f$/;
 		if(cmd.match(oofrex))
 			cmd = "oof";
 		switch (cmd) {
 			case "scott":
-				msg.channel.send(great.scott(args));
+				sendResponse(msg.channel, scott(args));
 				break;
 			case "turbobrad":
 			case "strider":
-				var victim = conf["victims"][cmd];
-				msg.channel.send(makeInsult(victim));
+				var victim = conf.victims[cmd];
+				sendResponse(msg.channel, makeInsult(victim));
 				break;
 			case "member":
 				msg.channel.send(member());
@@ -335,13 +390,14 @@ bot.on("message", async (msg) => {
 			case "mark":
 				msg.channel.send(mark());
 				break;
-			case "lutris":
+			case "lutris": {
 				let lutrisText = "wat"
 				if (args.length > 0) {
-					lutrisText = lutris.searchLutris(args);
+					lutrisText = await searchLutris(args);
 				}
-				msg.channel.send(lutrisText);
+				sendResponse(msg.channel, lutrisText);
 				break;
+			}
 			case "frojoe":
 				msg.channel.send(tickleMeFrojoe(msg, args))
 				break;
@@ -358,7 +414,7 @@ bot.on("message", async (msg) => {
 				msg.channel.send(newGuy());
 				break;
 			case "oof":
-				msg.channel.send(pedro.oof());
+				msg.channel.send(oof());
 				break;
 			case "jalaud":
 				msg.channel.send(jalaud());
@@ -369,31 +425,30 @@ bot.on("message", async (msg) => {
 			case "punish":
 				msg.channel.send(dmPunish(args));
 				break;
-			case "mir":
-				const giph = await giphy.getRandomGif("waifu")
-				msg.channel.send(giph);
+			case "mir": {
+				const giph = await getRandomGif("waifu");
+				sendResponse(msg.channel, giph);
 				break;
+			}
 			case "mirppc":
 				msg.channel.send("MOAR CORES!");
 				break;
 			case "img":
-				const whatIsImg = "IMG was founded in 1960 in Cleveland, Ohio by Mark McCormack, an American lawyer who spotted the potential for athletes to make large incomes from endorsement in the television age; he signed professional golfers Arnold Palmer, Gary Player and Jack Nicklaus as his first clients who collectively are known as The Big Three."
-				msg.channel.send(whatIsImg);
+				msg.channel.send("IMG was founded in 1960 in Cleveland, Ohio by Mark McCormack, an American lawyer who spotted the potential for athletes to make large incomes from endorsement in the television age; he signed professional golfers Arnold Palmer, Gary Player and Jack Nicklaus as his first clients who collectively are known as The Big Three.");
 				break;
-			case "atomicass":
-				const _meme = await meme.makeMeme(args)
-				if (_meme) {
-					msg.channel.send(_meme)
-				}
+			case "atomicass": {
+				const memeResult = await makeMeme(args);
+				sendResponse(msg.channel, memeResult);
 				break;
+			}
 			case "aussie":
-				msg.channel.send(aussie.flipText(args));
+				msg.channel.send(flipText(args));
 				break;
 			case "jfss":
-				msg.channel.send(jfss.steph());
+				sendResponse(msg.channel, steph());
 				break;
-			case "barf":
-				var gifurls = [
+			case "barf": {
+				const gifurls = [
 					"https://media1.giphy.com/media/EiCQzmzE5HLaw/giphy.gif",
 					"https://media1.giphy.com/media/3o7bugZgrGQEmE4epq/giphy.gif",
 					"https://media1.giphy.com/media/zm9Tt8vsAmJmE/giphy.gif",
@@ -412,75 +467,31 @@ bot.on("message", async (msg) => {
 					"https://media1.giphy.com/media/WbhPKtfXZSM5a/giphy.gif",
 					"https://media0.giphy.com/media/4qCEytljLybzq/giphy.gif",
 				];
-				var gn = Math.floor(Math.random() * gifurls.length);
-				const barfEmbed = new MessageEmbed()
+				const gn = Math.floor(Math.random() * gifurls.length);
+				const barfEmbed = new EmbedBuilder()
 					.setImage(gifurls[gn])
 					.setTitle("BARF!!!")
-				msg.channel.send(barfEmbed);
+				msg.channel.send({ embeds: [barfEmbed] });
 				break;
-			case "cage":
-				var gifurls = [
+			}
+			case "cage": {
+				const gifurls = [
 					"https://media1.giphy.com/media/xTiTnC5cMmUx9bfWYU/giphy.gif",
 					"https://media2.giphy.com/media/8J5qsXwnIah2M/giphy.gif",
 					"https://media0.giphy.com/media/bQ40qrJdEg8Mw/giphy.gif",
 					"https://media2.giphy.com/media/10uct1aSFT7QiY/giphy.gif",
 					"https://media0.giphy.com/media/CiTLZWskt7Fu/giphy.gif",
 				];
-				var gn = Math.floor(Math.random() * gifurls.length);
-				const cageEmbed = new MessageEmbed()
+				const gn = Math.floor(Math.random() * gifurls.length);
+				const cageEmbed = new EmbedBuilder()
 					.setImage(gifurls[gn])
 					.setTitle("#CageForVenn")
-				msg.channel.send(cageEmbed);
+				msg.channel.send({ embeds: [cageEmbed] });
 				break;
+			}
 			default:
-				if (conf["log"]["messages"]) db.logMessage(msg);
+				if (conf.log.messages) db.logMessage(msg);
 				break;
 		}
-	}
-
-	function makeInsult(name) {
-		var insults = require("./insults.json");
-		var ins = insults.length;
-		logger.info("ins: " + ins);
-		var ind = Math.floor(Math.random() * ins);
-		logger.info("ind: " + ind);
-		var insult = insults[ind];
-		var i = insult.replace(/@s/g, name);
-		return i;
-	}
-
-
-	function member() {
-		const memberBerries = require("./memberberries.json");
-		return "…member " + randomChoice(memberBerries) + "?!!? :-D";
-	}
-
-	function watIs(args) {
-		const wat = args.join(" ")
-		if (!wat) {
-			return "Yo, what's up?!";
-		}
-		const definitions = require("./definitions.json");
-		const definition = definitions[wat.trim().toLowerCase()];
-		if (definition) {
-			return definition;
-		} else {
-			return "I have no clue what a " + args + " is.";
-		}
-	}
-
-	function foxxxify(args) {
-		const dogg = args[0]
-		if (!dogg) return ":regional_indicator_m: :fox: :dog2: :flag_au:";
-		const doggo = dogg.trim().toLowerCase();
-		if (doggo === "out")
-			return "https://cdn.discordapp.com/attachments/270406768750886912/443264760436490271/fuck-this-shit.png";
-		if (doggo === "laterz")
-			return "https://cdn.discordapp.com/attachments/270406768750886912/474401118915657746/Screenshot_from_2018-05-06_14-16-03.png";
-		return "https://cdn.discordapp.com/attachments/270406768750886912/474401450257154048/Screenshot_from_2018-05-12_13-38-18.png";
-	}
-
-	function mark() {
-		return "https://media.discordapp.net/attachments/270406768750886912/943523121074429952/Screenshot_from_2022-02-15_14-41-38.png"
 	}
 });

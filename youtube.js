@@ -1,23 +1,20 @@
-(function() {
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
-	var request = require("request");
-	var conf = require("./conf.json");
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const conf = JSON.parse(readFileSync(join(__dirname, "conf.json"), "utf8"));
 
-	module.exports.postRandomYoutubeVideo = (bot, channelID) => {
-		postRandomYoutubeVideo(bot, channelID);
+export async function postRandomYoutubeVideo(channel) {
+	const apiToken = conf.randomyoutube.api_token;
+	const url = `https://randomyoutube.net/api/getvid?api_token=${apiToken}`;
+	try {
+		const body = await fetch(url).then(r => r.json());
+		if (body && body.vid) {
+			const videoUrl = `https://www.youtube.com/watch?v=${body.vid}`;
+			await channel.send(videoUrl);
+		}
+	} catch (err) {
+		console.log(`Random YouTube error: ${err}`);
 	}
-
-	function postRandomYoutubeVideo(bot, channelID) {
-		var apiToken = conf["randomyoutube"]["api_token"];
-		var url = `https://randomyoutube.net/api/getvid?api_token=${apiToken}`;
-		request.get({
-			url: url,
-			json: true,
-		}, function (error, response, body) {
-			if (body) {
-				var url = `https://www.youtube.com/watch?v=${body.vid}`
-				msg.channel.send({ to: channelID, message: url });
-			} 
-		})
-	}
-})();
+}

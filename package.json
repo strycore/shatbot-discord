@@ -1,19 +1,23 @@
 {
   "name": "shatbot",
   "license": "GPLv3",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "shat shat shatbot",
+  "type": "module",
   "main": "bot.js",
+  "engines": {
+    "node": ">=18"
+  },
   "author": "eMpTy",
   "dependencies": {
-    "cheerio": "^1.0.0-rc.9",
-    "discord.js": "^12.5.3",
-    "eslint": "^7.26.0",
-    "got": "^11.8.2",
-    "request": "^2.88.2",
-    "sqlite-sync": "^0.3.9",
-    "sqlite3": "^5.0.2",
-    "winston": "^2.4.0"
+    "better-sqlite3": "^11.0.0",
+    "cheerio": "^1.2.0",
+    "discord.js": "^14.0.0",
+    "winston": "^3.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0"
   },
   "repository": {
     "type": "git",

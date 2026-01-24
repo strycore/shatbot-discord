@@ -1,29 +1,34 @@
-"use strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import Database from "better-sqlite3";
 
-// db.js handles db stuff
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const conf = JSON.parse(readFileSync(join(__dirname, "conf.json"), "utf8"));
 
-(function() {
+const SCHEMA_VERSION = 2;
 
-	var db = require('sqlite-sync');
+let db;
 
-	var conf = require('./conf.json');
+export function connect() {
+	const dburi = join(conf.db.path, conf.db.name);
+	db = new Database(dburi);
+	db.pragma("journal_mode = WAL");
+}
 
-	const SCHEMA_VERSION = 2;
+function getSchemaVer() {
+	const row = db.pragma("user_version", { simple: true });
+	return row;
+}
 
-	function getSchemaVer() {
-		var res = db.run("PRAGMA user_version");
-		return res[0]["user_version"];
-	}
+function setSchemaVer(ver) {
+	db.pragma(`user_version = ${ver}`);
+}
 
-	function setSchemaVer(ver) {
-		var res = db.run("PRAGMA user_version=" + ver);
-		return (res.error);
-	}
-
-	function updateSchema(from) {
-		switch(from + 1) {
-			case 1:
-				var res = db.run(`
+function upgradeSchema(from) {
+	switch (from + 1) {
+		case 1:
+			db.exec(`
 CREATE TABLE messages(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	user TEXT NOT NULL, userID TEXT NOT NULL,
@@ -31,81 +36,64 @@ CREATE TABLE messages(
 	evt TEXT NOT NULL,
 	ts DATETIME DEFAULT CURRENT_TIMESTAMP
 )
-				`);
-				if(res.error)
-					throw res.error;
-				setSchemaVer(1);
+			`);
+			setSchemaVer(1);
 			break;
-			case 2:
-				var res = db.run(`
+		case 2:
+			db.exec(`
 CREATE TABLE suggest_enabled(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	enabled INTEGER NOT NULL, message_id INTEGER NOT NULL,
 	FOREIGN KEY(message_id) REFERENCES messages(id)
 )
-				`);
-				if(res.error)
-					throw res.error;
-				setSchemaVer(2);
+			`);
+			setSchemaVer(2);
 			break;
-		}
 	}
+}
 
-	function _logMessage(msg) {
-		delete msg["bot"];
-		console.log("log - (" + msg["user"] + ") " + msg["message"]);
-		var res = db.insert("messages", msg);
-		console.log("insert res: " + res);
-		return res;
+export function updateSchema() {
+	let ver = getSchemaVer();
+	while (ver < SCHEMA_VERSION) {
+		console.log("upgrading db schema ver: " + ver + " -> " + (ver + 1));
+		upgradeSchema(ver);
+		ver++;
 	}
+}
 
-	function _getSuggestEnabled(msg) {
-		var res = db.run(`
+export function logMessage(msg) {
+	const stmt = db.prepare(
+		"INSERT INTO messages (user, userID, channelID, message, evt) VALUES (?, ?, ?, ?, ?)"
+	);
+	const info = stmt.run(
+		msg.author.username,
+		msg.author.id,
+		msg.channel.id,
+		msg.content,
+		"message"
+	);
+	console.log("log - (" + msg.author.username + ") " + msg.content);
+	return info.lastInsertRowid;
+}
+
+export function getSuggestEnabled(channelID) {
+	const stmt = db.prepare(`
 SELECT enabled FROM suggest_enabled AS se
 LEFT JOIN messages AS m ON m.id = se.message_id
-WHERE m.channelID = ` + msg["channelID"] + `
+WHERE m.channelID = ?
 ORDER BY m.ts DESC
 LIMIT 1
-		`);
-		if(res.error)
-			throw res.error;
-		console.log("res: " + JSON.stringify(res));
-		if(res.length != 1)
-			return false;
-		var boolstr = res[0]["values"][0][0];
-		if(boolstr == "0")
-			return false;
-		if(boolstr == "1")
-			return true;
-		return null;
-	}
+	`);
+	const row = stmt.get(channelID);
+	if (!row) return false;
+	return row.enabled === 1;
+}
 
-	module.exports.connect = () => { 
-		var dburi = conf["db"]["path"] + conf["db"]["name"];
-		db.connect(dburi);
-	}
-
-	module.exports.updateSchema = () => {
-		var ver = getSchemaVer();
-		while(ver < SCHEMA_VERSION) {
-			console.log("upgrading db schema ver: " + ver + " -> " + (ver + 1));
-			updateSchema(ver);
-			ver++;
-		}
-	}
-
-	module.exports.logMessage = (msg) => {
-		return _logMessage(msg);
-	}
-
-	module.exports.getSuggestEnabled = (msg) => {
-		return _getSuggestEnabled(msg);
-	}
-
-	module.exports.setSuggestEnabled = (msg, bool) => {
-		var msg_id = _logMessage(msg);
-		var boolstr = (bool) ? "1" : "0";
-		var res = db.insert("suggest_enabled", { enabled: boolstr, message_id: msg_id });
-	}
-
-})();
+export function setSuggestEnabled(msg, bool) {
+	const msgId = logMessage(msg);
+	const boolstr = bool ? 1 : 0;
+	const stmt = db.prepare(
+		"INSERT INTO suggest_enabled (enabled, message_id) VALUES (?, ?)"
+	);
+	stmt.run(boolstr, msgId);
+}
