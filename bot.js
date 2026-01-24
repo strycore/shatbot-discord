@@ -361,7 +361,11 @@ bot.on("clientReady", () => {
 	logger.info(bot.user.id + " - (" + bot.user.username + ")");
 });
 
-bot.on("messageCreate", async (msg) => {
+bot.on("error", (err) => {
+	logger.error("Discord client error: " + err);
+});
+
+bot.on("messageCreate", async (msg) => { try {
 	if (msg.content.substring(0, 1) == "!") {
 		var args = msg.content.substring(1).split(" ");
 		var cmd = args[0];
@@ -494,4 +498,4 @@ bot.on("messageCreate", async (msg) => {
 				break;
 		}
 	}
-});
+} catch (err) { logger.error("Command error: " + err); } });
