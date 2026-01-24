@@ -355,7 +355,7 @@ const bot = new Client({
 });
 bot.login(conf.discord.auth_token);
 
-bot.on("ready", () => {
+bot.on("clientReady", () => {
 	logger.info("Connected");
 	logger.info("Logged in as: ");
 	logger.info(bot.user.id + " - (" + bot.user.username + ")");
